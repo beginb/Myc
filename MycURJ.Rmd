@@ -4,10 +4,16 @@ author: "Ju-Won Lee"
 date: "2024-02-24"
 output: html_document
 ---
-#Import Data
-```{r setup, include=FALSE}
+#Package Upload
+```{r}
+library(edgeR)
+library(limma)
 library(tibble)
 library(readr)
+```
+
+#Import Data
+```{r setup, include=FALSE}
 GSE56176_fpkm <- read_delim("GSE56176_fpkm.txt", 
     delim = "\t", escape_double = FALSE, 
     trim_ws = TRUE)
