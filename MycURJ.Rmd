@@ -1,0 +1,70 @@
+---
+title: "Myc Zebrafish"
+author: "Ju-Won Lee"
+date: "2024-02-24"
+output: html_document
+---
+#Import Data
+```{r setup, include=FALSE}
+library(tibble)
+library(readr)
+GSE56176_fpkm <- read_delim("GSE56176_fpkm.txt", 
+    delim = "\t", escape_double = FALSE, 
+    trim_ws = TRUE)
+
+#Removal of duplicated rows
+duplicated_rows <- data.frame(duplicated(GSE56176_fpkm$ensembl_id))
+GSE56176_fpkm <- GSE56176_fpkm[!duplicated(GSE56176_fpkm$ensembl_id, fromLast = TRUE), ]
+
+#Data Wrangling
+allrownames <- GSE56176_fpkm$ensembl_id
+rownames(GSE56176_fpkm) <- allrownames
+rnaseq <- GSE56176_fpkm[, -1]
+rownames(rnaseq) <- allrownames
+
+#FPKM RNA-seq Preparation
+rnaseq <- rnaseq + 1
+rnaseq <- log2(rnaseq)
+```
+
+#edgeR Preparation
+```{r}
+#Data Wrangling
+seqdata <- data.frame(rnaseq)
+rownames(seqdata) <- allrownames
+
+colnames(seqdata) <- c("CNE1", "CNE1", "CNE1", "CNT1", "CNT1", "CNT1", "GNE1", "GNE1", "GNE1", "GNT1", "GNT1", "GNT1", "GNE3", "GNE3", "GNE3", "CNE3", "CNE3", "CNE3", "GNE5", "GNE5", "GNE5", "CNE5", "CNE5", "CNE5")
+
+#DGElist Preparation
+d0 <- DGEList(seqdata)
+snames <- colnames(seqdata) # Sample names
+snames
+group <- c("CNE1", "CNE1", "CNE1", "CNT1", "CNT1", "CNT1", "GNE1", "GNE1", "GNE1", "GNT1", "GNT1", "GNT1", "GNE3", "GNE3", "GNE3", "CNE3", "CNE3", "CNE3", "GNE5", "GNE5", "GNE5", "CNE5", "CNE5", "CNE5")
+```
+
+#Limma/trend
+```{r}
+logCPM <- cpm(d0, log=TRUE, prior.count=3)
+mm <- model.matrix(~ 0 + group)
+fit <- lmFit(logCPM, mm)
+```
+
+#Sample Set-up
+```{r}
+#Condition Set-up (Change Group Names for Various Sample Comparison)
+contr <- makeContrasts(groupGNT1 - groupGNE1, levels = colnames(coef(fit)))
+```
+
+#Continued limma/trend
+```{r}
+fit <- contrasts.fit(fit, contr)
+fit <- eBayes(fit, trend=TRUE)
+top.table <- topTable(fit, sort.by = "P", n = Inf)
+```
+
+#Data Frame Conversion
+```{r}
+DEgenes <- data.frame(top.table)
+DEgenes <- rownames_to_column(DEgenes, var = "Gene")
+```
+
